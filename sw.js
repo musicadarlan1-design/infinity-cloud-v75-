@@ -1,4 +1,4 @@
-const CACHE_NAME = "infinity-v75-4-img"; // Atualizado para forçar o navegador a baixar o novo CSS
+const CACHE_NAME = "infinity-v75-6-final";
 const ASSETS = [
     "./",
     "./index.html",
