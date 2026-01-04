@@ -1,217 +1,53 @@
-// === INFINITY V75.3 - PARTE 1 (CORE & BACKUP FIX) ===
+// === INFINITY V75.6 - PARTE 1 (CORE & PWA) ===
 let CONFIG={head:{t:"",c:""},body:{t:"",c:"",u:""}};
 let APP_DATA={history:[],vault:[],folders:[]};
-let UPLOAD_QUEUE=[];
-let PENDING_FILES=[];
-let IS_UPLOADING=false;
 let MASTER_KEY=null;
 let ACTIVE_FILTER="all";
 let CURRENT_FOLDER=null;
+let CURRENT_GALLERY_INDEX = -1;
+let FILTERED_ITEMS = [];
 let deferredPrompt;
 
-// PWA
-if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').then(()=>console.log('SW OK')).catch((e)=>console.error('SW Fail',e));}
-window.addEventListener('beforeinstallprompt', (e) => {e.preventDefault(); deferredPrompt = e; if(!window.matchMedia('(display-mode: standalone)').matches){const btn = document.getElementById("btn-pwa-install"); if(btn) btn.classList.remove("hidden");}});
+if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('./sw.js').then(()=>console.log('SW OK')).catch((e)=>console.error('SW Fail',e));
+}
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault(); 
+    deferredPrompt = e; 
+    if(!window.matchMedia('(display-mode: standalone)').matches){
+        const btn = document.getElementById("btn-pwa-install"); 
+        if(btn) btn.classList.remove("hidden");
+    }
+});
 
 function init(){
-    if(window.location.hash.startsWith("#login=")){showScreen("magic-login-screen");window.MAGIC_PAYLOAD=decodeURIComponent(window.location.hash.replace("#login=",""));return;}
-    const isPWA = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    if(window.location.hash.startsWith("#login=")){
+        showScreen("magic-login-screen");
+        window.MAGIC_PAYLOAD=decodeURIComponent(window.location.hash.replace("#login=",""));
+        return;
+    }
     const hasConfig = localStorage.getItem("i58_enc_config");
+    const isPWA = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
     if(!isPWA && !sessionStorage.getItem("pwa_skipped")){
         showScreen("pwa-install-screen");
-        if(!deferredPrompt) document.getElementById("btn-pwa-manual").classList.remove("hidden");
     } else {
         hasConfig ? showScreen("login-screen") : showScreen("setup-panel");
     }
 }
-async function installPWA(){if(deferredPrompt){deferredPrompt.prompt();const {outcome}=await deferredPrompt.userChoice;if(outcome==='accepted'){deferredPrompt=null;location.reload();}}}
-function togglePWAGuide(){document.getElementById("pwa-guide").classList.toggle("hidden");}
-function skipPWA(){sessionStorage.setItem("pwa_skipped", "true");init();}
 
-// REDE
-async function fetchWithRetry(url,opt={}){try{const r=await fetch(url,opt);if(!r.ok)throw new Error(`HTTP ${r.status}`);return await r.json();}catch(e){const proxy="https://corsproxy.io/?"+encodeURIComponent(url);const r=await fetch(proxy,opt);return await r.json();}}
-
-// --- CORREÇÃO DO BACKUP (FORÇA BRUTA) ---
-// Esta função agora é chamada diretamente pelo botão
-window.manualBackup = async function(btn){
-    if(!MASTER_KEY) { alert("Erro: Não logado."); return; }
-    
-    // Feedback Visual Imediato
-    const originalText = btn ? btn.innerText : "Forçar Backup";
-    if(btn) { btn.innerText = "⏳ Conectando..."; btn.disabled = true; }
-
-    try {
-        const payload={timestamp:Date.now(),config:CONFIG,data:APP_DATA};
-        const enc=CryptoJS.AES.encrypt(JSON.stringify(payload),MASTER_KEY).toString();
-        const fd=new FormData();
-        fd.append("chat_id",CONFIG.head.c);
-        fd.append("document",new Blob([enc],{type:"text/plain"}),`db_${Date.now()}.enc`);
-        
-        const r=await fetch(`https://api.telegram.org/bot${CONFIG.head.t}/sendDocument`,{method:"POST",body:fd});
-        const j=await r.json();
-        
-        if(j.ok){
-            // Tenta pinar, mas não falha se não conseguir
-            fetch(`https://api.telegram.org/bot${CONFIG.head.t}/pinChatMessage`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({chat_id:CONFIG.head.c,message_id:j.result.message_id})}).catch(()=>{});
-            
-            if(btn) btn.innerText = "✅ SUCESSO!";
-            setTimeout(()=>{ alert("Backup salvo e pinado no Telegram!"); }, 100);
-        } else {
-            throw new Error(j.description || "Erro desconhecido na API");
-        }
-    } catch(e) {
-        alert("FALHA NO BACKUP:\n" + e.message);
-        if(btn) btn.innerText = "❌ Erro";
-    } finally {
-        setTimeout(()=>{ if(btn){btn.innerText = originalText; btn.disabled = false;} }, 3000);
-    }
-};
-
-// Salvar Automático (Silencioso)
-async function pushDatabase(){
+function saveLocal(){
     if(!MASTER_KEY)return;
-    const payload={timestamp:Date.now(),config:CONFIG,data:APP_DATA};
-    const enc=CryptoJS.AES.encrypt(JSON.stringify(payload),MASTER_KEY).toString();
-    const fd=new FormData();fd.append("chat_id",CONFIG.head.c);fd.append("document",new Blob([enc],{type:"text/plain"}),`db_${Date.now()}.enc`);
-    try{const r=await fetch(`https://api.telegram.org/bot${CONFIG.head.t}/sendDocument`,{method:"POST",body:fd});const j=await r.json();if(j.ok){fetch(`https://api.telegram.org/bot${CONFIG.head.t}/pinChatMessage`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({chat_id:CONFIG.head.c,message_id:j.result.message_id})});}}catch(e){}
+    const payload={config:CONFIG,data:APP_DATA};
+    localStorage.setItem("i58_enc_config",CryptoJS.AES.encrypt(JSON.stringify(payload),MASTER_KEY).toString());
 }
 
-// LOGIN
-async function universalLogin(isMagic=false){
-    const pass=document.getElementById(isMagic?"magic-pass":"local-pass").value.trim();
-    const btn=document.querySelector(".box:not(.hidden) .btn-main");
-    if(btn){btn.innerText="⏳...";btn.disabled=true;}
-    try{
-        let enc=isMagic?window.MAGIC_PAYLOAD:localStorage.getItem("i58_enc_config");
-        if(!enc) throw new Error("Sem config.");
-        if(isMagic && enc.includes("%")) enc=decodeURIComponent(enc);
-        const dec=CryptoJS.AES.decrypt(enc,pass).toString(CryptoJS.enc.Utf8);
-        if(!dec) throw new Error("Senha errada.");
-        const parsed=JSON.parse(dec); const cfg=parsed.config||parsed; const data=parsed.data||APP_DATA;
-        try{
-            const info=await fetchWithRetry(`https://api.telegram.org/bot${cfg.head.t}/getChat?chat_id=${cfg.head.c}`);
-            if(info.ok && info.result.pinned_message && info.result.pinned_message.document){
-                const fid=info.result.pinned_message.document.file_id;
-                const fInfo=await fetchWithRetry(`https://api.telegram.org/bot${cfg.head.t}/getFile?file_id=${fid}`);
-                const url=`https://api.telegram.org/file/bot${cfg.head.t}/${fInfo.result.file_path}`;
-                let encDb; try{encDb=await (await fetch(url)).text();}catch(e){encDb=await (await fetch("https://corsproxy.io/?"+encodeURIComponent(url))).text();}
-                const decDb=CryptoJS.AES.decrypt(encDb,pass).toString(CryptoJS.enc.Utf8);
-                const full=JSON.parse(decDb); CONFIG=full.config||cfg; APP_DATA=full.data||data;
-            }else{CONFIG=cfg;APP_DATA=data;}
-        }catch(e){CONFIG=cfg;APP_DATA=data;}
-        if(!APP_DATA.folders)APP_DATA.folders=[]; MASTER_KEY=pass; saveLocal(); enterApp();
-    }catch(e){alert(e.message);if(btn){btn.innerText="Entrar";btn.disabled=false;}}
+async function getShortUrl(longUrl) {
+    try {
+        const r = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(longUrl)}`);
+        return r.ok ? await r.text() : longUrl;
+    } catch(e) { return longUrl; }
 }
-async function restoreProfile(){
-    const t=document.getElementById("restore-token").value.trim(), c=document.getElementById("restore-chat").value.trim(), p=document.getElementById("restore-pass").value.trim();
-    if(!t||!c||!p) return alert("Falta dados.");
-    try{
-        const chatInfo=await fetchWithRetry(`https://api.telegram.org/bot${t}/getChat?chat_id=${c}`);
-        if(!chatInfo.ok||!chatInfo.result.pinned_message) throw new Error("Backup não encontrado.");
-        const fid=chatInfo.result.pinned_message.document.file_id;
-        const fInfo=await fetchWithRetry(`https://api.telegram.org/bot${t}/getFile?file_id=${fid}`);
-        const url=`https://api.telegram.org/file/bot${t}/${fInfo.result.file_path}`;
-        let encDb; try{encDb=await (await fetch(url)).text();}catch(e){encDb=await (await fetch("https://corsproxy.io/?"+encodeURIComponent(url))).text();}
-        const decDb=CryptoJS.AES.decrypt(encDb,p).toString(CryptoJS.enc.Utf8);
-        if(!decDb) throw new Error("Senha errada.");
-        const full=JSON.parse(decDb); CONFIG=full.config; APP_DATA=full.data;
-        if(!APP_DATA.folders) APP_DATA.folders=[]; MASTER_KEY=p; saveLocal(); alert("Restaurado!"); enterApp();
-    }catch(e){alert(e.message);}
-}
-function saveLocal(){if(!MASTER_KEY)return;const payload={config:CONFIG,data:APP_DATA};localStorage.setItem("i58_enc_config",CryptoJS.AES.encrypt(JSON.stringify(payload),MASTER_KEY).toString());}
-function fullReset(){if(confirm("Sair?")){try{localStorage.clear();}catch(e){}location.reload();}}
-function setSetupMode(mode){document.getElementById("mode-restore").classList.toggle("hidden",mode!=="restore");document.getElementById("mode-create").classList.toggle("hidden",mode!=="create");}
-function createProfile(){
-    const ht=document.getElementById("new-head-token").value, hc=document.getElementById("new-head-chat").value, bt=document.getElementById("new-body-token").value, bc=document.getElementById("new-body-chat").value, bu=document.getElementById("new-body-username").value, mp=document.getElementById("new-master-pass").value;
-    if(!ht||!hc||!bt||!bc||!mp){alert("Falta dados!");return;}
-    CONFIG={head:{t:ht,c:hc},body:{t:bt,c:bc,u:bu}}; MASTER_KEY=mp; APP_DATA={history:[],vault:[],folders:[]}; saveLocal(); pushDatabase(); enterApp();
-}
-// SYNC
-async function manualSync(){
-    const btns=document.querySelectorAll("button"); btns.forEach(b=>{if(b.innerText.includes("Sincronizar")){b.disabled=true;b.innerText="⏳...";}});
-    try{
-        const up=await fetchWithRetry(`https://api.telegram.org/bot${CONFIG.body.t}/getUpdates?limit=50&allowed_updates=["message","channel_post"]`);
-        let added=0;
-        if(up.ok && up.result){
-            for(const u of up.result){
-                const msg=u.message||u.channel_post; if(!msg) continue;
-                let media=null,type="application",sz=0;
-                if(msg.document){media=msg.document;type="application";sz=media.file_size;} else if(msg.video){media=msg.video;type="video";sz=media.file_size;} else if(msg.audio){media=msg.audio;type="audio";sz=media.file_size;} else if(msg.photo){media=msg.photo[msg.photo.length-1];type="image";sz=media.file_size;}
-                if(!media) continue;
-                if(APP_DATA.history.some(h=>h.unique_id===media.file_unique_id)) continue;
-                const name=media.file_name||`Arquivo_${media.file_id.slice(0,8)}`;
-                if(type==="application"){
-                    const nl=name.toLowerCase();
-                    if(nl.match(/\.(mp4|mkv|avi|mov|webm)$/)) type="video";
-                    else if(nl.match(/\.(mp3|wav|ogg|m4a|flac)$/)) type="audio";
-                    else if(nl.match(/\.(jpg|jpeg|png|webp|gif)$/)) type="image";
-                    else if(nl.match(/\.(txt|js|py|html|css|json|md|pdf|doc|docx|xls|xlsx|ppt|pptx|csv)$/)) type="text";
-                    else type="other"; 
-                }
-                APP_DATA.history.push({name,hash:"MANUAL",file_id:media.file_id,unique_id:media.file_unique_id,thumb_id:msg.video?.thumb?.file_id||null,date:new Date(msg.date*1000).toISOString(),type,chat_id:msg.chat?.id||CONFIG.body.c,message_id:msg.message_id,folder_id:null,size:sz});
-                added++;
-            }
-        }
-        if(added>0){saveLocal();pushDatabase();renderHistory();alert(`✅ ${added} novos!`);}else{alert("Nada novo.");}
-    }catch(e){alert("Erro sync: "+e.message);} finally{btns.forEach(b=>{if(b.disabled){b.disabled=false;b.innerText="Sincronizar";}});}
-}
-// === INFINITY V75.3 - PARTE 2 (UI & LOGIC) ===
-
-function updateUploadPathUI(){const el=document.getElementById("upload-dest-indicator");if(!el)return;el.innerHTML=CURRENT_FOLDER?`📂 Salvando em: <b style="color:var(--primary)">${APP_DATA.folders.find(f=>f.id===CURRENT_FOLDER)?.name}</b>`:`📂 Salvando em: <b>Início</b>`;el.style.borderColor=CURRENT_FOLDER?"var(--primary)":"#333";}
-function createNewFolder(){const n=prompt("Nome:");if(!n)return;const id="f_"+Date.now();APP_DATA.folders.push({id,name:n,parent:CURRENT_FOLDER,created:new Date().toISOString()});saveLocal();pushDatabase();if(confirm("Entrar?"))openFolder(id);else renderHistory();}
-function openFolder(id){CURRENT_FOLDER=id;document.getElementById("search-input").value="";renderHistory();updateUploadPathUI();}
-function folderUp(){if(!CURRENT_FOLDER)return;CURRENT_FOLDER=APP_DATA.folders.find(f=>f.id===CURRENT_FOLDER)?.parent||null;renderHistory();updateUploadPathUI();}
-
-// UPLOAD
-async function uploadFetch(file,method,field,isSpoiler){
-    const fd=new FormData(); fd.append("chat_id",CONFIG.body.c); fd.append(field,file); if(isSpoiler)fd.append("has_spoiler","true");
-    const r=await fetch(`https://api.telegram.org/bot${CONFIG.body.t}/${method}`,{method:"POST",body:fd});
-    if(!r.ok) throw new Error("HTTP "+r.status); return (await r.json()).result;
-}
-async function handleFileSelect(files){
-    if(!files.length)return; if(!document.getElementById("tab-upload").classList.contains("hidden")===false)switchTab("upload");
-    PENDING_FILES=[]; const fi=document.getElementById("file_input"); const fo=document.getElementById("folder_input");
-    for(const f of Array.from(files)){PENDING_FILES.push({file:f,hash:await calculateFileHash(f),exists:false});}
-    if(fi)fi.value="";if(fo)fo.value=""; renderRenameList();
-}
-async function calculateFileHash(file){const b=await file.arrayBuffer();return CryptoJS.MD5(CryptoJS.lib.WordArray.create(b)).toString();}
-function renderRenameList(){
-    const l=document.getElementById("rename-list"); if(!l)return; l.innerHTML=`<div style="margin-bottom:10px"><label style="display:flex;gap:8px;font-size:12px;color:#ccc"><input type="checkbox" id="spoiler-check"><span>Spoiler (Blur)</span></label></div>`;
-    PENDING_FILES.forEach((i,x)=>l.innerHTML+=`<div class="rename-item"><span style="color:#888;font-size:10px">${x+1}.</span><input id="ren-${x}" value="${i.file.name}" style="flex:1;background:#111;border:1px solid #333;color:#ddd;padding:5px"></div>`);
-    const p=document.getElementById("upload-preview-area"), o=document.querySelector(".upload-options");
-    if(PENDING_FILES.length){p.classList.remove("hidden");o.classList.add("hidden");document.getElementById("pending-count").innerText=PENDING_FILES.length+" arq.";}
-    else{p.classList.add("hidden");o.classList.remove("hidden");}
-}
-function confirmUpload(){
-    const sp=document.getElementById("spoiler-check")?.checked, tf=CURRENT_FOLDER;
-    PENDING_FILES.forEach(i=>{
-        const n=document.getElementById(`ren-${PENDING_FILES.indexOf(i)}`)?.value||i.file.name;
-        UPLOAD_QUEUE.push({file:new File([i.file],n,{type:i.file.type}),hash:i.hash,status:"pending",isSpoiler:sp,target_folder:tf});
-    });
-    PENDING_FILES=[]; renderRenameList(); updateQueueUI(); if(!IS_UPLOADING)processQueue(); alert("Iniciado!");
-}
-function cancelUpload(){PENDING_FILES=[];renderRenameList();}
-async function processQueue(){
-    const p=UPLOAD_QUEUE.filter(i=>i.status==="pending"); const w=document.getElementById("mini-upload-widget");
-    if(p.length){IS_UPLOADING=true;w.classList.remove("hidden");document.getElementById("widget-count").innerText=p.length;}
-    else{IS_UPLOADING=false;w.classList.add("hidden");pushDatabase();return;}
-    const i=UPLOAD_QUEUE.find(x=>x.status==="pending"); if(!i)return;
-    try{
-        let m="sendDocument",f="document"; 
-        if(i.file.type.startsWith("image")){m="sendPhoto";f="photo";}
-        else if(i.file.type.startsWith("video")){m="sendVideo";f="video";}
-        else if(i.file.type.startsWith("audio")){m="sendAudio";f="audio";}
-        
-        const msg=await uploadFetch(i.file,m,f,i.isSpoiler);
-        let fid=null,uniq=null,th=null,typ="application",sz=0;
-        const media=msg.document||msg.video||msg.audio||(msg.photo?msg.photo[msg.photo.length-1]:null);
-        if(media){fid=media.file_id;uniq=media.file_unique_id;sz=media.file_size;}
-        
-        if(msg.video){typ="video";th=msg.video.thumb?.file_id;}
-        else if(msg.photo){typ="image";}
-        else if(msg.audio){typ="audio";}
-        else {typ="application";}
-
         APP_DATA.history.push({name:i.file.name,hash:i.hash,file_id:fid,unique_id:uniq,thumb_id:th,date:new Date().toISOString(),type:typ,chat_id:msg.chat.id,message_id:msg.message_id,folder_id:i.target_folder,size:sz});
         saveLocal(); i.status="success"; if(!document.getElementById("tab-gallery").classList.contains("hidden"))renderHistory();
     }catch(e){console.error(e);i.status="error";}
@@ -448,3 +284,109 @@ function switchTab(id){document.querySelectorAll(".tab-content").forEach(c=>c.cl
 async function saveEditorFile(){const n=document.getElementById("editor-filename").value||"x.txt",c=document.getElementById("editor-content").value;if(!c)return;const f=new File([c],n,{type:"text/plain"});UPLOAD_QUEUE.push({file:f,hash:await calculateFileHash(f),status:"pending",target_folder:CURRENT_FOLDER});updateQueueUI();if(!IS_UPLOADING)processQueue();alert("Fila!");switchTab("upload");}
 
 init();
+// === INFINITY V75.6 - PARTE 2 (API & BACKUP) ===
+async function fetchWithRetry(url,opt={}){
+    try{
+        const r=await fetch(url,opt);
+        if(!r.ok)throw new Error(`HTTP ${r.status}`);
+        return await r.json();
+    }catch(e){
+        const proxy="https://corsproxy.io/?"+encodeURIComponent(url);
+        const r=await fetch(proxy,opt);
+        return await r.json();
+    }
+}
+
+async function pushDatabase(){
+    if(!MASTER_KEY)return;
+    const payload={timestamp:Date.now(),config:CONFIG,data:APP_DATA};
+    const enc=CryptoJS.AES.encrypt(JSON.stringify(payload),MASTER_KEY).toString();
+    const fd=new FormData();
+    fd.append("chat_id",CONFIG.head.c);
+    fd.append("document",new Blob([enc],{type:"text/plain"}),`db_${Date.now()}.enc`);
+    try{
+        const r=await fetch(`https://api.telegram.org/bot${CONFIG.head.t}/sendDocument`,{method:"POST",body:fd});
+        const j=await r.json();
+        if(j.ok){
+            fetch(`https://api.telegram.org/bot${CONFIG.head.t}/pinChatMessage`,{
+                method:"POST",
+                headers:{"Content-Type":"application/json"},
+                body:JSON.stringify({chat_id:CONFIG.head.c,message_id:j.result.message_id})
+            });
+        }
+    }catch(e){}
+}
+
+async function copyUniversalLink(btn) {
+    const originalText = btn.innerText;
+    btn.innerText = "⏳ Encurtando...";
+    const encConfig = localStorage.getItem("i58_enc_config");
+    const pass = MASTER_KEY;
+    const longUrl = `${window.location.origin}${window.location.pathname}#login=${encodeURIComponent(encConfig)}`;
+    
+    const shortUrl = await getShortUrl(longUrl);
+    navigator.clipboard.writeText(shortUrl).then(() => {
+        btn.innerText = "✅ Link Curto Copiado!";
+        setTimeout(() => btn.innerText = originalText, 2000);
+    });
+    }
+                                // === INFINITY V75.6 - PARTE 3 (GALERIA & NAVEGAÇÃO) ===
+function renderHistory() {
+    const grid = document.getElementById("preview-grid");
+    if(!grid) return;
+    
+    FILTERED_ITEMS = APP_DATA.history.filter(item => {
+        const matchesFolder = CURRENT_FOLDER ? item.folder_id === CURRENT_FOLDER : !item.folder_id;
+        const matchesSearch = item.name.toLowerCase().includes(document.getElementById("search-input")?.value.toLowerCase() || "");
+        const matchesType = ACTIVE_FILTER === "all" || item.type === ACTIVE_FILTER;
+        return matchesFolder && matchesSearch && matchesType;
+    });
+
+    grid.innerHTML = FILTERED_ITEMS.map((item, index) => `
+        <div class="preview-item" onclick="openLightbox(${index})">
+            <div class="preview-thumb" style="background-image: url('${item.thumb_url || ''}')">
+                ${!item.thumb_url ? '<i class="fas fa-file icon"></i>' : ''}
+                <span class="type-tag">${item.type}</span>
+            </div>
+            <div class="preview-name">${item.name}</div>
+        </div>
+    `).join("");
+}
+
+function openLightbox(index) {
+    CURRENT_GALLERY_INDEX = index;
+    const item = FILTERED_ITEMS[index];
+    if(!item) return;
+
+    const lb = document.getElementById("lightbox");
+    const display = lb.querySelector(".media-display");
+    document.getElementById("lb-filename").innerText = item.name;
+    document.getElementById("lb-download").href = `https://api.telegram.org/file/bot${CONFIG.body.t}/${item.file_path}`;
+
+    if(item.type === "image") {
+        display.innerHTML = `<img src="https://api.telegram.org/file/bot${CONFIG.body.t}/${item.file_path}">`;
+    } else if(item.type === "video") {
+        display.innerHTML = `<video controls src="https://api.telegram.org/file/bot${CONFIG.body.t}/${item.file_path}"></video>`;
+    } else {
+        display.innerHTML = `<div style="text-align:center"><i class="fas fa-file" style="font-size:50px"></i><p>Arquivo ${item.type}</p></div>`;
+    }
+
+    lb.classList.add("active");
+}
+
+function changeMedia(dir, event) {
+    if(event) event.stopPropagation();
+    let nextIdx = CURRENT_GALLERY_INDEX + dir;
+    if(nextIdx >= 0 && nextIdx < FILTERED_ITEMS.length) {
+        openLightbox(nextIdx);
+    }
+}
+
+function closeLightbox() {
+    document.getElementById("lightbox").classList.remove("active");
+    document.querySelector(".media-display").innerHTML = "";
+}
+
+// Inicializar app
+document.addEventListener("DOMContentLoaded", init);
+        
