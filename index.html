@@ -3,52 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Infinity V74 - Estável</title>
+    <title>Infinity V75.3</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#050505">
+    <meta name="apple-mobile-web-app-capable" content="yes">
 </head>
 <body>
-<div class="container">
-    <div class="header-title">Infinity <span>Cloud</span></div>
 
-    <!-- LOGIN -->
+<div class="container">
+    <div class="header-title">Infinity <span>V75.3</span> <span class="badge">PRO</span></div>
+
+    <!-- TELA LOGIN -->
     <div id="login-screen" class="box hidden" style="text-align:center; padding:40px 20px;">
         <i class="fas fa-database" style="font-size:50px; color:var(--primary); margin-bottom:20px;"></i>
-        <h3>Acessar Nuvem</h3>
-        <input type="password" id="local-pass" placeholder="🔑 Senha Mestra" style="text-align:center;">
-        <button class="btn-main" onclick="universalLogin()">Entrar</button>
-        <div style="margin-top:20px; font-size:11px; cursor:pointer; color:#666" onclick="fullReset()">Sair / Resetar</div>
+        <h3>Infinity Cloud</h3>
+        <input type="password" id="local-pass" placeholder="🔑 Senha" style="text-align:center;">
+        <button class="btn-main" onclick="universalLogin(false)">Entrar</button>
+        <div style="margin-top:20px; font-size:11px; cursor:pointer; text-decoration:underline; color:#666" onclick="fullReset()">Sair / Resetar</div>
     </div>
 
-    <!-- SETUP -->
+    <!-- TELA SETUP -->
     <div id="setup-panel" class="box hidden">
-        <div class="setup-toggle" style="display:flex; gap:5px; margin-bottom:15px;">
-            <button class="btn-sec" style="flex:1" onclick="setSetupMode('restore')">🔄 Restaurar</button>
-            <button class="btn-sec" style="flex:1" onclick="setSetupMode('create')">✨ Novo</button>
+        <div class="setup-toggle">
+            <button id="btn-mode-restore" class="st-btn active" onclick="setSetupMode('restore')">🔄 Restaurar</button>
+            <button id="btn-mode-create" class="st-btn" onclick="setSetupMode('create')">✨ Criar Novo</button>
         </div>
         <div id="mode-restore">
-            <input type="password" id="restore-token" placeholder="Head Bot Token">
-            <input type="text" id="restore-chat" placeholder="Head Chat ID">
-            <input type="password" id="restore-pass" placeholder="Senha Mestra">
+            <div class="config-group head"><input type="password" id="restore-token" placeholder="Head Bot Token"><input type="text" id="restore-chat" placeholder="Head Chat ID"></div>
+            <input type="password" id="restore-pass" placeholder="🔑 Senha Mestra">
             <button class="btn-main" onclick="restoreProfile()">🚀 Baixar & Entrar</button>
         </div>
         <div id="mode-create" class="hidden">
-            <input type="password" id="new-head-token" placeholder="Head Bot Token">
-            <input type="text" id="new-head-chat" placeholder="Head Chat ID">
-            <input type="password" id="new-body-token" placeholder="Body Bot Token">
-            <input type="text" id="new-body-chat" placeholder="Body Chat ID">
-            <input type="text" id="new-body-username" placeholder="User do Canal">
+            <div class="config-group head"><input type="password" id="new-head-token" placeholder="Head Token"><input type="text" id="new-head-chat" placeholder="Head Chat"></div>
+            <div class="config-group body"><input type="password" id="new-body-token" placeholder="Body Token"><input type="text" id="new-body-chat" placeholder="Body Chat"><input type="text" id="new-body-username" placeholder="Canal Username"></div>
             <input type="password" id="new-master-pass" placeholder="Crie uma Senha Mestra">
             <button class="btn-main" onclick="createProfile()">Criar Sistema</button>
         </div>
     </div>
 
-    <!-- APP PANEL -->
+    <!-- PAINEL APP -->
     <div id="app-panel" class="box hidden">
-        <div class="nav-tabs" style="display:flex; gap:5px; overflow-x:auto; margin-bottom:15px;">
+        <div class="nav-tabs">
             <div class="nav-tab active" onclick="switchTab('upload')">Upload</div>
             <div class="nav-tab" onclick="switchTab('gallery')">Galeria</div>
             <div class="nav-tab" onclick="switchTab('editor')">Editor</div>
@@ -57,49 +55,62 @@
         </div>
 
         <div id="tab-upload" class="tab-content">
-            <div class="box" style="background:#1a1a1a;">
-                <button class="btn-main" onclick="document.getElementById('file_input').click()">📁 Arquivos</button>
-                <input type="file" id="file_input" class="hidden" multiple onchange="handleFileSelect(this.files)">
-                <button class="btn-sec" style="margin-top:10px;" onclick="manualSync()">🔄 Sincronizar Canal</button>
-            </div>
-            <div id="upload-preview-area" class="hidden">
+            <div id="upload-dest-indicator" style="background:#222; border:1px solid var(--secondary); color:var(--secondary); padding:8px; border-radius:6px; font-size:11px; margin-bottom:10px; text-align:center;">📂 Salvando em: <b>Início</b></div>
+            <button class="btn-main" onclick="document.getElementById('file_input').click()"><i class="fas fa-file"></i> Selecionar Arquivos</button>
+            <input type="file" id="file_input" class="hidden" multiple onchange="handleFileSelect(this.files)">
+            <button class="btn-sec" style="margin-top:10px;" onclick="openTelegramApp()"><i class="fab fa-telegram-plane"></i> Ir ao Canal</button>
+            <button class="btn-sec" onclick="manualSync()"><i class="fas fa-sync"></i> Sincronizar</button>
+            <div id="upload-preview-area" class="hidden" style="margin-top:10px;">
                 <div id="rename-list"></div>
                 <button class="btn-main" onclick="confirmUpload()">Confirmar Envio</button>
             </div>
         </div>
 
         <div id="tab-gallery" class="tab-content hidden">
-            <input type="text" id="search-input" placeholder="🔍 Buscar..." onkeyup="renderHistory()">
+            <div style="display:flex; gap:5px; margin-bottom:10px;">
+                <button class="btn-sec" id="btn-back-folder" onclick="folderUp()" style="width:40px; display:none;"><i class="fas fa-arrow-left"></i></button>
+                <input type="text" id="search-input" placeholder="🔍 Buscar..." onkeyup="renderHistory()" style="margin:0;">
+                <button class="btn-sec" onclick="createNewFolder()" style="width:40px;"><i class="fas fa-folder-plus"></i></button>
+            </div>
+            <div id="folder-path" style="font-size:11px; color:var(--primary); margin-bottom:10px;"></div>
+            <div class="gallery-header">
+                <div style="display:flex; gap:5px; margin-bottom:10px; overflow-x:auto;">
+                    <button class="chip active" data-filter="all" onclick="filterGallery('all', this)">Tudo</button>
+                    <button class="chip" data-filter="image" onclick="filterGallery('image', this)">Fotos</button>
+                    <button class="chip" data-filter="video" onclick="filterGallery('video', this)">Vídeos</button>
+                </div>
+            </div>
             <div id="gallery-grid" class="preview-grid"></div>
         </div>
 
         <div id="tab-editor" class="tab-content hidden">
             <input type="text" id="editor-filename" placeholder="nome.txt">
-            <textarea id="editor-content" style="height:250px; width:100%; background:#111; color:#fff; border:1px solid #333; padding:10px;"></textarea>
+            <textarea id="editor-content" style="height:300px; width:100%; background:#111; color:#fff; border:1px solid #333; padding:10px;"></textarea>
             <button class="btn-main" onclick="saveEditorFile()">Salvar na Nuvem</button>
         </div>
 
         <div id="tab-vault" class="tab-content hidden">
-            <input type="text" id="v-service" placeholder="Serviço (ex: Instagram)">
-            <input type="text" id="v-user" placeholder="Usuário">
-            <input type="text" id="v-pass" placeholder="Senha">
-            <button class="btn-main" onclick="addPassword()">Salvar Senha</button>
-            <div id="vault-list" style="margin-top:20px;"></div>
+            <div class="box" style="background:#1a1a1a;">
+                <input type="text" id="v-service" placeholder="Serviço">
+                <input type="text" id="v-user" placeholder="Usuário">
+                <input type="text" id="v-pass" placeholder="Senha">
+                <button class="btn-head" onclick="addPassword()">Salvar</button>
+            </div>
+            <div id="vault-list" style="margin-top:15px;"></div>
         </div>
 
         <div id="tab-settings" class="tab-content hidden">
             <button class="btn-main" onclick="manualBackup(this)">☁️ Forçar Backup</button>
-            <button class="btn-danger" style="margin-top:20px;" onclick="fullReset()">⚠️ Sair e Resetar</button>
+            <button class="btn-danger" style="margin-top:20px;" onclick="fullReset()">⚠️ Resetar Sistema</button>
         </div>
     </div>
 </div>
 
-<!-- LIGHTBOX SIMPLES (ESTÁVEL) -->
 <div id="lightbox" class="lightbox">
     <div class="lightbox-content">
         <button class="close-btn" onclick="closeLightbox()">X</button>
         <div id="lightbox-media-container" class="media-display"></div>
-        <div class="lightbox-info"><h4 id="lb-filename"></h4></div>
+        <div class="lightbox-info"><h4 id="lb-filename"></h4><div class="nav-controls"></div></div>
     </div>
 </div>
 
