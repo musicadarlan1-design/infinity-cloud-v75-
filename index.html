@@ -3,90 +3,160 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Infinity V75.6</title>
+    <title>Infinity V75.5</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- BIBLIOTECAS ESSENCIAIS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#050505">
+    <meta name="apple-mobile-web-app-capable" content="yes">
 </head>
 <body>
 <div class="container">
-    <div class="header-title">Infinity <span>Cloud</span> <span class="badge">PRO</span></div>
+    <div class="header-title">Infinity <span>V75.5</span> <span class="badge">ULTRA</span></div>
 
-    <!-- LOGIN -->
+    <!-- TELA PWA -->
+    <div id="pwa-install-screen" class="box hidden" style="text-align:center; padding:30px 20px; border:1px solid var(--primary);">
+        <i class="fas fa-cloud-download-alt" style="font-size:50px; color:var(--primary); margin-bottom:20px;"></i>
+        <h3>Baixar App</h3>
+        <button id="btn-pwa-install" class="btn-main hidden" onclick="installPWA()">Instalar App</button>
+        <button id="btn-pwa-manual" class="btn-sec hidden" onclick="togglePWAGuide()">iOS / Manual</button>
+        <div id="pwa-guide" class="hidden" style="margin-top:15px; text-align:left; background:#222; padding:10px; border-radius:8px; font-size:11px; color:#ccc;">
+            <p><b>iPhone:</b> Compartilhar > Adicionar à Tela de Início.</p>
+        </div>
+        <div style="margin-top:20px; font-size:11px; cursor:pointer; color:#666" onclick="skipPWA()">Continuar no Navegador ></div>
+    </div>
+
+    <!-- TELA LOGIN -->
     <div id="login-screen" class="box hidden" style="text-align:center; padding:40px 20px;">
         <i class="fas fa-database" style="font-size:50px; color:var(--primary); margin-bottom:20px;"></i>
-        <h3>Bem-vindo</h3>
-        <input type="password" id="local-pass" placeholder="🔑 Senha Mestra" style="text-align:center; margin-top:15px;">
-        <button class="btn-main" onclick="universalLogin(false)">Entrar no Sistema</button>
+        <h3>Infinity Cloud</h3>
+        <input type="password" id="local-pass" placeholder="🔑 Senha" style="text-align:center;">
+        <button class="btn-main" onclick="universalLogin(false)">Entrar</button>
         <div style="margin-top:20px; font-size:11px; cursor:pointer; color:#666" onclick="fullReset()">Sair / Resetar</div>
     </div>
 
-    <!-- SETUP -->
+    <!-- TELA LINK MÁGICO -->
+    <div id="magic-login-screen" class="box hidden" style="text-align:center; padding:40px 20px;">
+        <i class="fas fa-magic" style="font-size:50px; color:var(--secondary); margin-bottom:20px;"></i>
+        <h3>Link Mágico</h3>
+        <input type="password" id="magic-pass" placeholder="🔑 Senha" style="text-align:center;">
+        <button class="btn-main" onclick="universalLogin(true)">Desbloquear</button>
+    </div>
+
+    <!-- TELA SETUP -->
     <div id="setup-panel" class="box hidden">
-        <div class="setup-toggle" style="display:flex; background:#000; padding:4px; border-radius:8px; margin-bottom:15px;">
-            <button class="btn-sec active" style="flex:1" onclick="setSetupMode('restore')">Entrar</button>
-            <button class="btn-sec" style="flex:1" onclick="setSetupMode('create')">Criar Novo</button>
+        <div class="setup-toggle">
+            <button id="btn-mode-restore" class="st-btn active" onclick="setSetupMode('restore')">🔄 Restaurar</button>
+            <button id="btn-mode-create" class="st-btn" onclick="setSetupMode('create')">✨ Criar Novo</button>
         </div>
         <div id="mode-restore">
-            <input type="password" id="restore-token" placeholder="Bot Token">
-            <input type="text" id="restore-chat" placeholder="Chat ID">
-            <input type="password" id="restore-pass" placeholder="Senha Mestra">
-            <button class="btn-main" onclick="restoreProfile()">🚀 Conectar Nuvem</button>
+            <div class="config-group head"><input type="password" id="restore-token" placeholder="Head Bot Token"><input type="text" id="restore-chat" placeholder="Head Chat ID"></div>
+            <input type="password" id="restore-pass" placeholder="🔑 Senha Mestra">
+            <button class="btn-main" onclick="restoreProfile()">🚀 Baixar & Entrar</button>
+        </div>
+        <div id="mode-create" class="hidden">
+            <div class="config-group head"><input type="password" id="new-head-token" placeholder="Head Bot Token"><input type="text" id="new-head-chat" placeholder="Head Chat ID"></div>
+            <div class="config-group body"><input type="password" id="new-body-token" placeholder="Body Bot Token"><input type="text" id="new-body-chat" placeholder="Body Chat ID"><input type="text" id="new-body-username" placeholder="Username do Canal"></div>
+            <input type="password" id="new-master-pass" placeholder="Crie uma Senha Mestra">
+            <button class="btn-main" onclick="createProfile()">Criar Sistema</button>
         </div>
     </div>
-    <!-- APP PANEL -->
     <div id="app-panel" class="box hidden">
+        <div id="magic-link-area" class="hidden" style="background:#222; padding:10px; border-radius:8px; margin-bottom:15px; border:1px solid var(--secondary)">
+            <div style="font-size:11px; color:var(--secondary); font-weight:bold; margin-bottom:5px;">🔗 LINK COMPACTADO:</div>
+            <div style="display:flex; gap:5px;"><input type="text" id="magic-link-input" readonly style="font-size:10px; background:#111; border:none; color:#aaa; margin:0;"><button class="btn-sec" onclick="copyMagicLink()" style="width:auto; padding:5px; margin:0;"><i class="fas fa-copy"></i></button></div>
+        </div>
+
         <div class="nav-tabs">
-            <div class="nav-tab active" onclick="switchTab('gallery')"><i class="fas fa-images"></i> Galeria</div>
-            <div class="nav-tab" onclick="switchTab('upload')"><i class="fas fa-cloud-upload-alt"></i> Upload</div>
+            <div class="nav-tab active" onclick="switchTab('upload')"><i class="fas fa-cloud-upload-alt"></i> Upload</div>
+            <div class="nav-tab" onclick="switchTab('editor')"><i class="fas fa-edit"></i> Editor</div>
+            <div class="nav-tab" onclick="switchTab('gallery')"><i class="fas fa-images"></i> Galeria</div>
+            <div class="nav-tab" onclick="switchTab('vault')"><i class="fas fa-lock"></i> Cofre</div>
             <div class="nav-tab" onclick="switchTab('settings')"><i class="fas fa-cog"></i> Ajustes</div>
         </div>
 
-        <div id="tab-gallery" class="tab-content">
-            <div style="display:flex; gap:5px; margin-bottom:10px;">
-                <input type="text" id="search-input" placeholder="🔍 Buscar arquivos..." onkeyup="renderHistory()" style="margin:0;">
-                <button class="btn-sec" onclick="manualSync()" style="width:40px;"><i class="fas fa-sync"></i></button>
+        <div id="tab-upload" class="tab-content">
+            <div id="upload-dest-indicator" class="dest-path">📂 Início</div>
+            <div class="upload-options">
+                <div class="box" style="border:1px solid #333; background:#1a1a1a;">
+                    <button class="btn-sec" onclick="document.getElementById('file_input').click()"><i class="fas fa-file"></i> Arquivos</button>
+                    <button class="btn-sec" onclick="document.getElementById('folder_input').click()"><i class="fas fa-folder"></i> Pasta</button>
+                    <input type="file" id="file_input" class="hidden" multiple onchange="handleFileSelect(this.files)">
+                    <input type="file" id="folder_input" class="hidden" multiple webkitdirectory directory onchange="handleFileSelect(this.files)">
+                </div>
+                <div class="box" style="border:1px solid var(--secondary); background:#151520; margin-top:10px;">
+                    <h4 style="margin:0 0 10px 0; color:var(--secondary)"><i class="fab fa-telegram-plane"></i> Pesado (Telegram)</h4>
+                    <button class="btn-head" onclick="openTelegramApp()">Ir ao Canal</button>
+                    <button class="btn-sec" style="margin-top:10px;" onclick="manualSync()">Sincronizar</button>
+                </div>
             </div>
+            <div id="upload-preview-area" class="hidden">
+                <div id="rename-list"></div>
+                <div style="display:flex; gap:10px;"><button class="btn-danger" onclick="cancelUpload()">Cancelar</button><button class="btn-main" onclick="confirmUpload()">Enviar</button></div>
+            </div>
+            <div id="upload-queue-list" class="queue-container hidden"><div id="queue-list"></div></div>
+        </div>
+
+        <div id="tab-editor" class="tab-content hidden">
+            <input type="text" id="editor-filename" placeholder="nome.txt" value="novo.txt">
+            <textarea id="editor-content" placeholder="Texto..." style="height:300px;"></textarea>
+            <button class="btn-main" onclick="saveEditorFile()">Salvar na Nuvem</button>
+        </div>
+
+        <div id="tab-gallery" class="tab-content hidden">
+            <div style="display:flex; gap:5px; margin-bottom:10px;">
+                <button class="btn-sec" id="btn-back-folder" onclick="folderUp()" style="width:40px; display:none;"><i class="fas fa-arrow-left"></i></button>
+                <input type="text" id="search-input" placeholder="🔍 Buscar..." onkeyup="renderHistory()">
+                <button class="btn-sec" onclick="createNewFolder()" style="width:40px;"><i class="fas fa-folder-plus"></i></button>
+            </div>
+            <div id="folder-path" class="path-text"></div>
             <div class="gallery-header">
                 <div style="display:flex; gap:5px;">
-                    <button class="chip active" onclick="filterGallery('all', this)">Tudo</button>
-                    <button class="chip" onclick="filterGallery('image', this)">Fotos</button>
-                    <button class="chip" onclick="filterGallery('video', this)">Vídeos</button>
+                    <button class="chip active" data-filter="all" onclick="filterGallery('all', this)">Tudo</button>
+                    <button class="chip" data-filter="image" onclick="filterGallery('image', this)">Fotos</button>
+                    <button class="chip" data-filter="video" onclick="filterGallery('video', this)">Vídeos</button>
                 </div>
+                <span id="hist-count" style="font-size:10px; color:#666;"></span>
             </div>
             <div id="gallery-grid" class="preview-grid"></div>
         </div>
 
-        <div id="tab-upload" class="tab-content hidden">
-            <button class="btn-main" onclick="document.getElementById('file_input').click()"><i class="fas fa-plus"></i> Selecionar Arquivos</button>
-            <input type="file" id="file_input" class="hidden" multiple onchange="handleFileSelect(this.files)">
-            <div id="upload-preview-area" class="hidden" style="margin-top:10px;">
-                <div id="rename-list"></div>
-                <button class="btn-main" onclick="confirmUpload()">Confirmar Envio</button>
+        <div id="tab-vault" class="tab-content hidden">
+            <div class="vault-add-box">
+                <input type="text" id="v-service" placeholder="Serviço">
+                <input type="text" id="v-pass" placeholder="Senha">
+                <button class="btn-head" onclick="addPassword()">Salvar</button>
             </div>
+            <div id="vault-list"></div>
         </div>
 
         <div id="tab-settings" class="tab-content hidden">
-            <button class="btn-main" onclick="copyUniversalLink(this)">🔗 Copiar Link Universal (Curto)</button>
-            <div style="height:10px"></div>
-            <button class="btn-sec" onclick="manualBackup(this)">☁️ Backup Manual</button>
+            <button class="btn-main" onclick="manualBackup(this)">☁️ Forçar Backup</button>
+            <button class="btn-danger" style="margin-top:20px;" onclick="fullReset()">⚠️ Resetar Tudo</button>
         </div>
     </div>
 </div>
-    <!-- LIGHTBOX COM BOTÕES -->
+    <!-- LIGHTBOX COM SETAS -->
 <div id="lightbox" class="lightbox">
+    <button class="nav-arrow left" onclick="changeFile(-1)"><i class="fas fa-chevron-left"></i></button>
+    <button class="nav-arrow right" onclick="changeFile(1)"><i class="fas fa-chevron-right"></i></button>
+    
     <div class="lightbox-content">
         <button class="close-btn" onclick="closeLightbox()"><i class="fas fa-times"></i></button>
-        <div class="nav-btn prev" onclick="changeMedia(-1, event)"><i class="fas fa-chevron-left"></i></div>
-        <div class="nav-btn next" onclick="changeMedia(1, event)"><i class="fas fa-chevron-right"></i></div>
         <div id="lightbox-media-container" class="media-display"></div>
         <div class="lightbox-info">
-            <h4 id="lb-filename" style="font-size:12px; color:#fff;">Arquivo</h4>
-            <a id="lb-download" href="#" target="_blank" class="download-link">Baixar</a>
+            <div class="lb-meta"><h4 id="lb-filename"></h4></div>
+            <div class="nav-controls"></div>
         </div>
     </div>
+</div>
+
+<div id="mini-upload-widget" class="hidden">
+    <div class="spinner"></div>
+    <div style="font-size:12px;">Enviando... <span id="widget-count">0</span></div>
 </div>
 
 <script src="script.js"></script>
