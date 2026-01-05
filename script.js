@@ -123,3 +123,21 @@ async function openLightbox(idx){
 function closeLightbox(){document.getElementById("lightbox").classList.remove("active");}
 function changeFile(delta){openLightbox(CURRENT_LB_INDEX+delta);}
 function fullReset(){if(confirm("Apagar tudo?")){localStorage.clear();location.reload();}}
+}
+async function openLightbox(idx){
+    if(idx<0 || idx>=FILTERED_FILES.length) return;
+    CURRENT_LB_INDEX=idx; const it=FILTERED_FILES[idx];
+    document.getElementById("lightbox").classList.add("active");
+    document.getElementById("lb-filename").innerText=it.name;
+    const c=document.getElementById("lightbox-media-container");
+    c.innerHTML="Carregando...";
+    try {
+        const res = await fetch(`https://api.telegram.org/bot${CONFIG.body.t}/getFile?file_id=${it.file_id}`).then(r=>r.json());
+        const url = `https://api.telegram.org/file/bot${CONFIG.body.t}/${res.result.file_path}`;
+        if(it.name.match(/\.(jpg|jpeg|png|gif)$/i)) c.innerHTML=`<img src="${url}" style="max-width:100%;max-height:80vh;">`;
+        else c.innerHTML=`<div style="padding:20px">Arquivo: ${it.name}</div>`;
+    } catch(e){c.innerHTML="Erro ao carregar.";}
+}
+function closeLightbox(){document.getElementById("lightbox").classList.remove("active");}
+function changeFile(delta){openLightbox(CURRENT_LB_INDEX+delta);}
+function fullReset(){if(confirm("Apagar tudo?")){localStorage.clear();location.reload();}}
