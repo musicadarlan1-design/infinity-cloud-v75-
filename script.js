@@ -1,4 +1,4 @@
-// === INFINITY V75.5.4 - CORE & LOGIN (PARTE 1) ===
+// === INFINITY V75.5.5 - RESTORE FIX (PARTE 1) ===
 let CONFIG={head:{t:"",c:""},body:{t:"",c:"",u:""}};
 let APP_DATA={history:[],vault:[],folders:[]};
 let UPLOAD_QUEUE=[]; let PENDING_FILES=[];
@@ -35,42 +35,58 @@ function showScreen(id){
     if(el) el.classList.remove("hidden");
 }
 
-async function universalLogin(isMagic=false){
-    const pass=document.getElementById(isMagic?"magic-pass":"local-pass").value.trim();
-    try{
-        let data=isMagic?window.MAGIC_PAYLOAD:localStorage.getItem("i58_enc_config");
-        const dec=CryptoJS.AES.decrypt(data,pass).toString(CryptoJS.enc.Utf8);
-        if(!dec) throw new Error();
-        const full=JSON.parse(dec); CONFIG=full.config; APP_DATA=full.data;
-        MASTER_KEY=pass; saveLocal(); enterApp();
-    }catch(e){alert("Senha incorreta!");}
-}
-
+// RESTAURAÇÃO REESCRITA E BLINDADA
 async function restoreProfile(){
     const t=document.getElementById("restore-token").value.trim();
     const c=document.getElementById("restore-chat").value.trim();
     const p=document.getElementById("restore-pass").value.trim();
-    if(!t||!c||!p) return alert("Faltam dados!");
-    try {
-        const chat=await fetch(`https://api.telegram.org/bot${t}/getChat?chat_id=${c}`).then(r=>r.json());
-        const fid=chat.result.pinned_message.document.file_id;
-        const file=await fetch(`https://api.telegram.org/bot${t}/getFile?file_id=${fid}`).then(r=>r.json());
-        const raw=await fetch(`https://api.telegram.org/file/bot${t}/${file.result.file_path}`).then(r=>r.text());
-        const dec=CryptoJS.AES.decrypt(raw,p).toString(CryptoJS.enc.Utf8);
-        const full=JSON.parse(dec); CONFIG=full.config; APP_DATA=full.data;
-        MASTER_KEY=p; saveLocal(); enterApp();
-    } catch(e){alert("Erro ao restaurar: Verifique o Token e se o backup está pinado.");}
-}
+    const btn = document.querySelector("#mode-restore .btn-main");
 
-function createProfile(){
-    const ht=document.getElementById("new-head-token").value, hc=document.getElementById("new-head-chat").value;
-    const bt=document.getElementById("new-body-token").value, bc=document.getElementById("new-body-chat").value;
-    const mp=document.getElementById("new-master-pass").value;
-    if(!ht||!hc||!bt||!bc||!mp) return alert("Preencha tudo!");
-    CONFIG={head:{t:ht,c:hc},body:{t:bt,c:bc,u:document.getElementById("new-body-username").value}};
-    MASTER_KEY=mp; APP_DATA={history:[],vault:[],folders:[]};
-    saveLocal(); enterApp();
+    if(!t||!c||!p) return alert("⚠️ Preencha todos os campos!");
+    if(btn) { btn.innerText = "⏳ Conectando..."; btn.disabled = true; }
+
+    try {
+        // 1. Busca informações do Chat/Canal
+        const chatRes = await fetch(`https://api.telegram.org/bot${t}/getChat?chat_id=${c}`).then(r=>r.json());
+        if(!chatRes.ok) throw new Error("Bot Token ou Chat ID inválido.");
+        
+        if(!chatRes.result.pinned_message || !chatRes.result.pinned_message.document) {
+            throw new Error("Nenhum arquivo de backup pinado neste canal.");
+        }
+
+        // 2. Obtém o caminho do arquivo
+        const fid = chatRes.result.pinned_message.document.file_id;
+        const fileRes = await fetch(`https://api.telegram.org/bot${t}/getFile?file_id=${fid}`).then(r=>r.json());
+        if(!fileRes.ok) throw new Error("Não foi possível localizar o arquivo no servidor.");
+
+        // 3. Baixa o arquivo usando Proxy para evitar erro de segurança (CORS)
+        const filePath = fileRes.result.file_path;
+        const url = `https://api.telegram.org/file/bot${t}/${filePath}`;
+        const proxyUrl = `https://corsproxy.io/?` + encodeURIComponent(url);
+        
+        const rawResponse = await fetch(proxyUrl);
+        if(!rawResponse.ok) throw new Error("Erro ao baixar o arquivo do Telegram (CORS/Rede).");
+        const rawData = await rawResponse.text();
+
+        // 4. Tenta descriptografar
+        const dec = CryptoJS.AES.decrypt(rawData, p).toString(CryptoJS.enc.Utf8);
+        if(!dec) throw new Error("Senha Mestra incorreta para este arquivo.");
+
+        const full = JSON.parse(dec);
+        CONFIG = full.config;
+        APP_DATA = full.data;
+        MASTER_KEY = p;
+
+        saveLocal();
+        alert("✅ Sucesso! Backup restaurado.");
+        enterApp();
+    } catch(e){
+        alert("❌ Erro: " + e.message);
+    } finally {
+        if(btn) { btn.innerText = "🚀 Baixar & Entrar"; btn.disabled = false; }
+    }
 }
+// ... (mantenha o restante das funções da Parte 1 e Parte 2 anteriores)
 // === INFINITY V75.5.4 - GALERIA & UPLOAD (PARTE 2) ===
 
 function enterApp(){ showScreen("app-panel"); renderHistory(); }
@@ -152,5 +168,5 @@ function fullReset(){ if(confirm("Apagar tudo?")){ localStorage.clear(); locatio
 function setSetupMode(m){
     document.getElementById("mode-restore").classList.toggle("hidden",m!=="restore");
     document.getElementById("mode-create").classList.toggle("hidden",m!=="create");
-                                                      }
-        
+        }
+
