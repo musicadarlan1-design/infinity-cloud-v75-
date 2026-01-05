@@ -3,66 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Infinity V75.5</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- BIBLIOTECAS ESSENCIAIS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
-    <link rel="stylesheet" href="style.css">
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#050505">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-</head>
-<body>
-<div class="container">
-    <div class="header-title">Infinity <span>V75.5</span> <span class="badge">ULTRA</span></div>
-
-    <!-- TELA PWA -->
-    <div id="pwa-install-screen" class="box hidden" style="text-align:center; padding:30px 20px; border:1px solid var(--primary);">
-        <i class="fas fa-cloud-download-alt" style="font-size:50px; color:var(--primary); margin-bottom:20px;"></i>
-        <h3>Baixar App</h3>
-        <button id="btn-pwa-install" class="btn-main hidden" onclick="installPWA()">Instalar App</button>
-        <button id="btn-pwa-manual" class="btn-sec hidden" onclick="togglePWAGuide()">iOS / Manual</button>
-        <div id="pwa-guide" class="hidden" style="margin-top:15px; text-align:left; background:#222; padding:10px; border-radius:8px; font-size:11px; color:#ccc;">
-            <p><b>iPhone:</b> Compartilhar > Adicionar à Tela de Início.</p>
-        </div>
-        <div style="margin-top:20px; font-size:11px; cursor:pointer; color:#666" onclick="skipPWA()">Continuar no Navegador ></div>
-    </div>
-
-    <!-- TELA LOGIN -->
-    <div id="login-screen" class="box hidden" style="text-align:center; padding:40px 20px;">
-        <i class="fas fa-database" style="font-size:50px; color:var(--primary); margin-bottom:20px;"></i>
-        <h3>Infinity Cloud</h3>
-        <input type="password" id="local-pass" placeholder="🔑 Senha" style="text-align:center;">
-        <button class="btn-main" onclick="universalLogin(false)">Entrar</button>
-        <div style="margin-top:20px; font-size:11px; cursor:pointer; color:#666" onclick="fullReset()">Sair / Resetar</div>
-    </div>
-
-    <!-- TELA LINK MÁGICO -->
-    <div id="magic-login-screen" class="box hidden" style="text-align:center; padding:40px 20px;">
-        <i class="fas fa-magic" style="font-size:50px; color:var(--secondary); margin-bottom:20px;"></i>
-        <h3>Link Mágico</h3>
-        <input type="password" id="magic-pass" placeholder="🔑 Senha" style="text-align:center;">
-        <button class="btn-main" onclick="universalLogin(true)">Desbloquear</button>
-    </div>
-
-    <!-- TELA SETUP -->
-    <div id="setup-panel" class="box hidden">
-        <div class="setup-toggle">
-            <button id="btn-mode-restore" class="st-btn active" onclick="setSetupMode('restore')">🔄 Restaurar</button>
-            <button id="btn-mode-create" class="st-btn" onclick="setSetupMode('create')">✨ Criar Novo</button>
-        </div>
-        <div id="mode-restore">
-            <div class="config-group head"><input type="password" id="restore-token" placeholder="Head Bot Token"><input type="text" id="restore-chat" placeholder="Head Chat ID"></div>
-            <input type="password" id="restore-pass" placeholder="🔑 Senha Mestra">
-            <button class="btn-main" onclick="restoreProfile()">🚀 Baixar & Entrar</button>
-        </div>
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Infinity V75.5.2</title>
+    <title>Infinity V75.5.3</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
@@ -73,23 +14,6 @@
 <body>
 <div class="container">
     <div class="header-title">Infinity <span>V75.5</span> <span class="badge">ULTRA</span></div>
-
-    <!-- TELA LOGIN -->
-    <div id="login-screen" class="box hidden" style="text-align:center; padding:40px 20px;">
-        <i class="fas fa-database" style="font-size:50px; color:var(--primary); margin-bottom:20px;"></i>
-        <h3>Infinity Cloud</h3>
-        <input type="password" id="local-pass" placeholder="🔑 Senha" style="text-align:center;">
-        <button class="btn-main" onclick="universalLogin(false)">Entrar</button>
-        <div style="margin-top:20px; font-size:11px; cursor:pointer; color:#666" onclick="fullReset()">Sair / Resetar</div>
-    </div>
-
-    <!-- TELA LINK MÁGICO -->
-    <div id="magic-login-screen" class="box hidden" style="text-align:center; padding:40px 20px;">
-        <i class="fas fa-magic" style="font-size:50px; color:var(--secondary); margin-bottom:20px;"></i>
-        <h3>Link Mágico</h3>
-        <input type="password" id="magic-pass" placeholder="🔑 Senha" style="text-align:center;">
-        <button class="btn-main" onclick="universalLogin(true)">Desbloquear</button>
-    </div>
 
     <!-- TELA SETUP -->
     <div id="setup-panel" class="box hidden">
@@ -97,12 +21,14 @@
             <button class="btn-sec" style="flex:1" onclick="setSetupMode('restore')">🔄 Restaurar</button>
             <button class="btn-sec" style="flex:1" onclick="setSetupMode('create')">✨ Criar Novo</button>
         </div>
+        
         <div id="mode-restore">
             <input type="password" id="restore-token" placeholder="Head Bot Token">
             <input type="text" id="restore-chat" placeholder="Head Chat ID">
             <input type="password" id="restore-pass" placeholder="🔑 Senha Mestra">
-            <button class="btn-main" onclick="restoreProfile()">🚀 Restaurar</button>
+            <button class="btn-main" onclick="restoreProfile()">🚀 Baixar & Entrar</button>
         </div>
+
         <div id="mode-create" class="hidden">
             <input type="password" id="new-head-token" placeholder="Head Bot Token">
             <input type="text" id="new-head-chat" placeholder="Head Chat ID">
@@ -114,12 +40,25 @@
         </div>
     </div>
 
-    <!-- APP PANEL -->
-    <div id="app-panel" class="box hidden">
-        <div id="magic-link-area" class="hidden" style="background:#222; padding:10px; border-radius:8px; margin-bottom:15px; border:1px solid var(--secondary)">
-            <div style="display:flex; gap:5px;"><input type="text" id="magic-link-input" readonly style="font-size:10px; background:#111; color:#aaa; margin:0;"><button class="btn-sec" onclick="copyMagicLink()" style="width:auto; padding:5px; margin:0;"><i class="fas fa-copy"></i></button></div>
-        </div>
+    <!-- TELA LOGIN COMUM -->
+    <div id="login-screen" class="box hidden" style="text-align:center; padding:40px 20px;">
+        <i class="fas fa-database" style="font-size:50px; color:var(--primary); margin-bottom:20px;"></i>
+        <h3>Infinity Cloud</h3>
+        <input type="password" id="local-pass" placeholder="🔑 Senha" style="text-align:center;">
+        <button class="btn-main" onclick="universalLogin(false)">Entrar</button>
+        <div style="margin-top:20px; font-size:11px; cursor:pointer; color:#666" onclick="fullReset()">Sair / Resetar</div>
+    </div>
 
+    <!-- TELA LINK MÁGICO -->
+    <div id="magic-login-screen" class="box hidden" style="text-align:center; padding:40px 20px;">
+        <i class="fas fa-magic" style="font-size:50px; color:var(--secondary); margin-bottom:20px;"></i>
+        <h3>Link Mágico</h3>
+        <input type="password" id="magic-pass" placeholder="🔑 Senha" style="text-align:center;">
+        <button class="btn-main" onclick="universalLogin(true)">Desbloquear</button>
+    </div>
+
+    <!-- PAINEL DO APP -->
+    <div id="app-panel" class="box hidden">
         <div class="nav-tabs" style="display:flex; gap:5px; overflow-x:auto; margin-bottom:15px;">
             <div class="nav-tab active" onclick="switchTab('upload')">Upload</div>
             <div class="nav-tab" onclick="switchTab('gallery')">Galeria</div>
@@ -129,7 +68,7 @@
         <div id="tab-upload" class="tab-content">
             <button class="btn-main" onclick="document.getElementById('file_input').click()">Selecionar Arquivos</button>
             <input type="file" id="file_input" class="hidden" multiple onchange="handleFileSelect(this.files)">
-            <button class="btn-sec" onclick="manualSync()">Sincronizar Canal</button>
+            <button class="btn-sec" style="margin-top:10px;" onclick="manualSync()">Sincronizar Canal</button>
             <div id="upload-preview-area" class="hidden" style="margin-top:10px;">
                 <div id="rename-list"></div>
                 <button class="btn-main" onclick="confirmUpload()">Confirmar Envio</button>
@@ -155,7 +94,7 @@
     <div class="lightbox-content">
         <button class="close-btn" onclick="closeLightbox()">X</button>
         <div id="lightbox-media-container" class="media-display"></div>
-        <div class="lightbox-info"><h4 id="lb-filename"></h4><div class="nav-controls"></div></div>
+        <div class="lightbox-info"><h4 id="lb-filename"></h4></div>
     </div>
 </div>
 
