@@ -1,4 +1,4 @@
-const CACHE_NAME = "infinity-v75-5-4";
+const CACHE_NAME = "infinity-v75-5-5-fix";
 const ASSETS = ["./", "./index.html", "./style.css", "./script.js", "./manifest.json", 
 "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css",
 "https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js",
@@ -17,3 +17,4 @@ self.addEventListener("fetch", (e) => {
     if (e.request.url.includes("api.telegram.org")) return;
     e.respondWith(caches.match(e.request).then((r) => r || fetch(e.request)));
 });
+
